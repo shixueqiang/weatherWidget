@@ -94,6 +94,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         // to the button
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
         views.setTextViewText(R.id.text_city, weather.getCityName());
+        views.setTextViewText(R.id.text_wind, weather.getWind());
         views.setTextViewText(R.id.text_weather, weather.getWeather() + " " + weather.getCurrTemp() + "℃");
         views.setTextViewText(R.id.text_temp, weather.getMinTemp() + "—" + weather.getMaxTemp());
         views.setTextViewText(R.id.text_pm2, weather.getPm25());
