@@ -41,10 +41,37 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     };
 
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        if (mWebView != null) {
-            mWebView.loadUrl(MainActivity.WEATHER_URL);
+        mContext = context;
+        initWebView(context);
+        mWebView.loadUrl(MainActivity.WEATHER_URL);
+        Log.e(TAG, "onUpdate appWidgetIds size " + appWidgetIds.length);
+
+    }
+
+    private void initWebView(Context context) {
+        if(mWebView == null) {
+            mWebView = new WebView(context);
+            mWebView.setWebViewClient(new MyWebViewClient());
+
+            WebSettings webSettings = mWebView.getSettings();
+
+            // add java script interface
+            // note:if api level lower than 17(android 4.2), addJavascriptInterface has security
+            // issue, please use x5 or see https://developer.android.com/reference/android/webkit/
+            // WebView.html#addJavascriptInterface(java.lang.Object, java.lang.String)
+            webSettings.setJavaScriptEnabled(true);
+            mWebView.removeJavascriptInterface("searchBoxJavaBridge_");
+            mWebView.addJavascriptInterface(new WeatherInterface(), "weather");
+
+            // init webview settings
+            webSettings.setAllowContentAccess(true);
+            webSettings.setDatabaseEnabled(true);
+            webSettings.setDomStorageEnabled(true);
+            webSettings.setAppCacheEnabled(true);
+            webSettings.setSaveFormData(false);
+            webSettings.setUseWideViewPort(true);
+            webSettings.setLoadWithOverviewMode(true);
         }
-        Log.e(TAG, "onUpdate appWidgetIds appWidgetIds " + appWidgetIds);
     }
 
     private void refreshWidget(Weather weather) {
@@ -54,13 +81,13 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
         // Get the layout for the App Widget and attach an on-click listener
         // to the button
-        RemoteViews views = new RemoteViews("com.shixq.www.weather", R.layout.widget_layout);
+        RemoteViews views = new RemoteViews(mContext.getPackageName(), R.layout.widget_layout);
         views.setTextViewText(R.id.text_city, weather.getCityName());
-        views.setTextViewText(R.id.text_weather, weather.getWeather());
-        views.setTextViewText(R.id.text_temp, weather.getCurrTemp() + "℃");
+        views.setTextViewText(R.id.text_weather, weather.getWeather() + " " + weather.getCurrTemp() + "℃");
+        views.setTextViewText(R.id.text_temp, weather.getMinTemp() + "—" + weather.getMaxTemp());
         views.setTextViewText(R.id.text_pm2, weather.getPm25());
         views.setTextViewText(R.id.text_pm2_description, weather.getPm25Description());
-        views.setOnClickPendingIntent(R.id.text, pendingIntent);
+        views.setOnClickPendingIntent(R.id.root_layout, pendingIntent);
 
         AppWidgetManager mAppWidgetManager = AppWidgetManager.getInstance(mContext.getApplicationContext());
         ComponentName componentName = new ComponentName(mContext.getApplicationContext(), WeatherWidgetProvider.class);
@@ -74,6 +101,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     @Override
     public void onDeleted(Context context, int[] appWidgetIds) {
         super.onDeleted(context, appWidgetIds);
+        mWebView = null;
     }
 
     /**
@@ -91,28 +119,9 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     @Override
     public void onEnabled(Context context) {
         super.onEnabled(context);
+        Log.e(TAG, "onEnabled");
         mContext = context;
-        mWebView = new WebView(context);
-        mWebView.setWebViewClient(new MyWebViewClient());
-
-        WebSettings webSettings = mWebView.getSettings();
-
-        // add java script interface
-        // note:if api level lower than 17(android 4.2), addJavascriptInterface has security
-        // issue, please use x5 or see https://developer.android.com/reference/android/webkit/
-        // WebView.html#addJavascriptInterface(java.lang.Object, java.lang.String)
-        webSettings.setJavaScriptEnabled(true);
-        mWebView.removeJavascriptInterface("searchBoxJavaBridge_");
-        mWebView.addJavascriptInterface(new WeatherInterface(), "weather");
-
-        // init webview settings
-        webSettings.setAllowContentAccess(true);
-        webSettings.setDatabaseEnabled(true);
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setAppCacheEnabled(true);
-        webSettings.setSaveFormData(false);
-        webSettings.setUseWideViewPort(true);
-        webSettings.setLoadWithOverviewMode(true);
+        initWebView(context);
         mWebView.loadUrl(MainActivity.WEATHER_URL);
     }
 
@@ -126,6 +135,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             String wind = doc.select("div.n_wd h2 span").get(0).text();
             String pm25 = doc.select("div.n_wd h3 span.lev3").get(0).text();
             String pm25Description = doc.select("div.n_wd h3 a.aqi b").get(0).text();
+            String maxTemp = doc.select("div#maxTemp svg tspan").get(1).text();
+            String minTemp = doc.select("div#minTemp svg tspan").get(1).text();
             Weather weatherModel = new Weather();
             weatherModel.setCityName(cityName);
             weatherModel.setCurrTemp(currTemp);
@@ -133,12 +144,16 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             weatherModel.setWind(wind);
             weatherModel.setPm25(pm25);
             weatherModel.setPm25Description(pm25Description);
+            weatherModel.setMaxTemp(maxTemp);
+            weatherModel.setMinTemp(minTemp);
             Log.e(TAG, weatherModel.toString());
             Message msg = mHandler.obtainMessage();
             msg.obj = weatherModel;
             msg.sendToTarget();
         }
     }
+
+
 
     class MyWebViewClient extends WebViewClient {
         @Override
