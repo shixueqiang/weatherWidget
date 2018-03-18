@@ -31,14 +31,25 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     private static String TAG = "WeatherWidgetProvider";
     private WebView mWebView;
     private Context mContext;
+    public static final String ACTION_REFRESH = "com.shixq.weather.refresh";
     private Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             Weather weather = (Weather) msg.obj;
-            refreshWidget(weather);
+            refreshWidget(mContext, weather);
         }
     };
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        super.onReceive(context, intent);
+        String action = intent.getAction();
+        if (action.equals(ACTION_REFRESH)) {
+            Weather weather = (Weather) intent.getSerializableExtra("weather");
+            refreshWidget(context, weather);
+        }
+    }
 
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         mContext = context;
@@ -49,7 +60,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     private void initWebView(Context context) {
-        if(mWebView == null) {
+        if (mWebView == null) {
             mWebView = new WebView(context);
             mWebView.setWebViewClient(new MyWebViewClient());
 
@@ -74,14 +85,14 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    private void refreshWidget(Weather weather) {
+    private void refreshWidget(Context context, Weather weather) {
         // Create an Intent to launch ExampleActivity
-        Intent intent = new Intent(mContext, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(mContext, 0, intent, 0);
+        Intent intent = new Intent(context, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
 
         // Get the layout for the App Widget and attach an on-click listener
         // to the button
-        RemoteViews views = new RemoteViews(mContext.getPackageName(), R.layout.widget_layout);
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
         views.setTextViewText(R.id.text_city, weather.getCityName());
         views.setTextViewText(R.id.text_weather, weather.getWeather() + " " + weather.getCurrTemp() + "℃");
         views.setTextViewText(R.id.text_temp, weather.getMinTemp() + "—" + weather.getMaxTemp());
@@ -89,8 +100,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.text_pm2_description, weather.getPm25Description());
         views.setOnClickPendingIntent(R.id.root_layout, pendingIntent);
 
-        AppWidgetManager mAppWidgetManager = AppWidgetManager.getInstance(mContext.getApplicationContext());
-        ComponentName componentName = new ComponentName(mContext.getApplicationContext(), WeatherWidgetProvider.class);
+        AppWidgetManager mAppWidgetManager = AppWidgetManager.getInstance(context.getApplicationContext());
+        ComponentName componentName = new ComponentName(context.getApplicationContext(), WeatherWidgetProvider.class);
         // Tell the AppWidgetManager to perform an update on the current app widget
         mAppWidgetManager.updateAppWidget(componentName, views);
     }
@@ -121,8 +132,6 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         super.onEnabled(context);
         Log.e(TAG, "onEnabled");
         mContext = context;
-        initWebView(context);
-        mWebView.loadUrl(MainActivity.WEATHER_URL);
     }
 
     class WeatherInterface {
@@ -152,7 +161,6 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             msg.sendToTarget();
         }
     }
-
 
 
     class MyWebViewClient extends WebViewClient {

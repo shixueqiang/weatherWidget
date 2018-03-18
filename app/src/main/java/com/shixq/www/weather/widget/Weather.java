@@ -1,10 +1,12 @@
 package com.shixq.www.weather.widget;
 
+import java.io.Serializable;
+
 /**
  * Created by shixq on 2018/3/17.
  */
 
-public class Weather {
+public class Weather implements Serializable{
     private String cityName;
     //当前温度
     private String currTemp;

@@ -4,9 +4,14 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -14,12 +19,17 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import com.shixq.www.weather.widget.Weather;
+import com.shixq.www.weather.widget.WeatherWidgetProvider;
 import com.tencent.sonic.sdk.SonicConfig;
 import com.tencent.sonic.sdk.SonicConstants;
 import com.tencent.sonic.sdk.SonicEngine;
 import com.tencent.sonic.sdk.SonicSession;
 import com.tencent.sonic.sdk.SonicSessionConfig;
 import com.tencent.sonic.sdk.SonicSessionConnection;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -30,12 +40,22 @@ import java.util.List;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
-
+    private final static String TAG = "MainActivity";
     public final static String WEATHER_URL = "http://m.weather.com.cn/mweather/101010100.shtml";
 
     private SonicSession sonicSession;
     private WebView mWebView;
     private SwipeRefreshLayout swipeRefreshLayout;
+    private Handler mHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            Weather weather = (Weather) msg.obj;
+            Intent intent = new Intent(WeatherWidgetProvider.ACTION_REFRESH);
+            intent.putExtra("weather", weather);
+            sendBroadcast(intent);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
                     sonicSession.getSessionClient().pageFinish(url);
                 }
                 swipeRefreshLayout.setRefreshing(false);
+                view.loadUrl("javascript:weather.onGetBodyHtml(document.getElementsByTagName(\"body\")[0].innerHTML);");
             }
 
             @TargetApi(21)
@@ -113,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setJavaScriptEnabled(true);
         mWebView.removeJavascriptInterface("searchBoxJavaBridge_");
         intent.putExtra(SonicJavaScriptInterface.PARAM_LOAD_URL_TIME, System.currentTimeMillis());
-        mWebView.addJavascriptInterface(new SonicJavaScriptInterface(sonicSessionClient, intent), "sonic");
+        mWebView.addJavascriptInterface(new WeatherInterface(), "weather");
 
         // init webview settings
         webSettings.setAllowContentAccess(true);
@@ -132,6 +153,34 @@ public class MainActivity extends AppCompatActivity {
             sonicSessionClient.clientReady();
         } else { // default mode
             mWebView.loadUrl(WEATHER_URL);
+        }
+    }
+
+    class WeatherInterface {
+        @JavascriptInterface
+        public void onGetBodyHtml(String html) {
+            Document doc = Jsoup.parseBodyFragment(html);
+            String cityName = doc.select("div#weather-position-address h2").get(0).text();
+            String currTemp = doc.select("div.n_wd h1 span").get(0).text();
+            String weather = doc.select("div.n_wd h1 em").get(0).text();
+            String wind = doc.select("div.n_wd h2 span").get(0).text();
+            String pm25 = doc.select("div.n_wd h3 span.lev3").get(0).text();
+            String pm25Description = doc.select("div.n_wd h3 a.aqi b").get(0).text();
+            String maxTemp = doc.select("div#maxTemp svg tspan").get(1).text();
+            String minTemp = doc.select("div#minTemp svg tspan").get(1).text();
+            Weather weatherModel = new Weather();
+            weatherModel.setCityName(cityName);
+            weatherModel.setCurrTemp(currTemp);
+            weatherModel.setWeather(weather);
+            weatherModel.setWind(wind);
+            weatherModel.setPm25(pm25);
+            weatherModel.setPm25Description(pm25Description);
+            weatherModel.setMaxTemp(maxTemp);
+            weatherModel.setMinTemp(minTemp);
+            Log.e(TAG, weatherModel.toString());
+            Message msg = mHandler.obtainMessage();
+            msg.obj = weatherModel;
+            msg.sendToTarget();
         }
     }
 
