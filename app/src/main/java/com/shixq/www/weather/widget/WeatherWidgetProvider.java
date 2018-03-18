@@ -144,7 +144,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             String currTemp = doc.select("div.n_wd h1 span").get(0).text();
             String weather = doc.select("div.n_wd h1 em").get(0).text();
             String wind = doc.select("div.n_wd h2 span").get(0).text();
-            String pm25 = doc.select("div.n_wd h3 span.lev3").get(0).text();
+            String pm25 = doc.select("div.n_wd h3 a.aqi span").get(0).text();
             String pm25Description = doc.select("div.n_wd h3 a.aqi b").get(0).text();
             String maxTemp = doc.select("div#maxTemp svg tspan").get(1).text();
             String minTemp = doc.select("div#minTemp svg tspan").get(1).text();
