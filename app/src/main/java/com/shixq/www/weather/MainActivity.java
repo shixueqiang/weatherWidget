@@ -3,9 +3,11 @@ package com.shixq.www.weather;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -42,18 +44,20 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity {
     private final static String TAG = "MainActivity";
     public final static String WEATHER_URL = "http://m.weather.com.cn/mweather/101010100.shtml";
-
     private SonicSession sonicSession;
     private WebView mWebView;
     private SwipeRefreshLayout swipeRefreshLayout;
-    private Handler mHandler = new Handler(Looper.getMainLooper()) {
+    private WeatherWidgetProvider weatherWidgetProvider;
+    private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
+            Log.e(TAG, "send broadcast");
             Weather weather = (Weather) msg.obj;
             Intent intent = new Intent(WeatherWidgetProvider.ACTION_REFRESH);
+            intent.setAction(WeatherWidgetProvider.ACTION_REFRESH);
             intent.putExtra("weather", weather);
-            sendBroadcast(intent);
+            sendBroadcastCompat(MainActivity.this, intent);
         }
     };
 
@@ -154,6 +158,37 @@ public class MainActivity extends AppCompatActivity {
         } else { // default mode
             mWebView.loadUrl(WEATHER_URL);
         }
+
+//        weatherWidgetProvider = new WeatherWidgetProvider();
+//        IntentFilter filter = new IntentFilter();
+//        filter.addAction("android.appwidget.action.APPWIDGET_UPDATE");
+//        filter.addAction("android.appwidget.action.ACTION_APPWIDGET_DELETED");
+//        filter.addAction("android.appwidget.action.ACTION_APPWIDGET_ENABLED");
+//        filter.addAction("android.appwidget.action.ACTION_APPWIDGET_DISABLED");
+//        filter.addAction("android.appwidget.action.ACTION_APPWIDGET_OPTIONS_CHANGED");
+//        filter.addAction("com.shixq.weather.refresh");
+//        registerReceiver(weatherWidgetProvider, filter);
+    }
+
+    /**
+     * 8.0静态注册广播无法接收问题
+     * @param context
+     * @param intent
+     */
+    public static void sendBroadcastCompat(Context context, Intent intent) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            context.sendBroadcast(intent);
+            return;
+        }
+
+        Intent broadcastIntent = new Intent(intent);
+        PackageManager pm = context.getPackageManager();
+
+        List<ResolveInfo> broadcastReceivers  = pm.queryBroadcastReceivers(broadcastIntent, 0);
+        for(ResolveInfo info : broadcastReceivers) {
+            broadcastIntent.setClassName(info.activityInfo.packageName, info.activityInfo.name);
+            context.sendBroadcast(broadcastIntent);
+        }
     }
 
     class WeatherInterface {
@@ -196,6 +231,7 @@ public class MainActivity extends AppCompatActivity {
             sonicSession = null;
         }
         super.onDestroy();
+//        unregisterReceiver(weatherWidgetProvider);
     }
 
 

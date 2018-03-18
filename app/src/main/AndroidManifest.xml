@@ -23,6 +23,10 @@
         <receiver android:name=".widget.WeatherWidgetProvider" >
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.appwidget.action.ACTION_APPWIDGET_DELETED" />
+                <action android:name="android.appwidget.action.ACTION_APPWIDGET_ENABLED" />
+                <action android:name="android.appwidget.action.ACTION_APPWIDGET_DISABLED" />
+                <action android:name="android.appwidget.action.ACTION_APPWIDGET_OPTIONS_CHANGED" />
                 <action android:name="com.shixq.weather.refresh" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider"

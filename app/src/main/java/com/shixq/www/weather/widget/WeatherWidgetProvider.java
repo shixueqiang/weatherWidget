@@ -45,6 +45,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         String action = intent.getAction();
+        Log.e(TAG, "receive action " + action);
         if (action.equals(ACTION_REFRESH)) {
             Weather weather = (Weather) intent.getSerializableExtra("weather");
             refreshWidget(context, weather);
